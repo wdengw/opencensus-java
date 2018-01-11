@@ -16,11 +16,15 @@
 
 package io.opencensus.examples.trace;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import io.opencensus.common.Scope;
-import io.opencensus.exporter.trace.logging.LoggingExporter;
+import io.opencensus.exporter.trace.zipkin.ZipkinExporter;
 import io.opencensus.trace.Span;
 import io.opencensus.trace.Tracer;
 import io.opencensus.trace.Tracing;
+import io.opencensus.trace.samplers.Samplers;
 
 /**
  * Example showing how to create a child {@link Span}, install it to the current context and add
@@ -56,12 +60,19 @@ public final class MultiSpansContextTracing {
    *
    * @param args the main arguments.
    */
-  public static void main(String[] args) {
-    LoggingExporter.register();
-    Span span = tracer.spanBuilderWithExplicitParent("MyRootSpan", null).startSpan();
+  public static void main(String[] args) throws InterruptedException {
+	ZipkinExporter.createAndRegister("http://127.0.0.1:9411/api/v2/spans", MultiSpansContextTracing.class.getSimpleName());
+//    LoggingExporter.register();
+    Span span = tracer.spanBuilderWithExplicitParent("MyRootSpan", null)
+    		.setRecordEvents(true)
+    		.setSampler(Samplers.alwaysSample())
+    		.startSpan();
     try (Scope ws = tracer.withSpan(span)) {
       doWork();
     }
     span.end();
+    // Wait for the Exporter to log the spans before exit. Exporter run every 5 second hardcoded.
+    Thread.sleep(6000);
+    Logger.getLogger(MultiSpansContextTracing.class.getName()).log(Level.INFO, "Done");
   }
 }

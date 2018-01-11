@@ -16,11 +16,15 @@
 
 package io.opencensus.examples.trace;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import io.opencensus.common.Scope;
-import io.opencensus.exporter.trace.logging.LoggingExporter;
+import io.opencensus.exporter.trace.zipkin.ZipkinExporter;
 import io.opencensus.trace.Span;
 import io.opencensus.trace.Tracer;
 import io.opencensus.trace.Tracing;
+import io.opencensus.trace.samplers.Samplers;
 
 /**
  * Example showing how to create a child {@link Span} using scoped Spans, install it in the current
@@ -54,10 +58,17 @@ public final class MultiSpansScopedTracing {
    *
    * @param args the main arguments.
    */
-  public static void main(String[] args) {
-    LoggingExporter.register();
-    try (Scope ss = tracer.spanBuilderWithExplicitParent("MyRootSpan", null).startScopedSpan()) {
+  public static void main(String[] args) throws InterruptedException {
+	ZipkinExporter.createAndRegister("http://127.0.0.1:9411/api/v2/spans", MultiSpansScopedTracing.class.getSimpleName());
+//    LoggingExporter.register();
+    try (Scope ss = tracer.spanBuilderWithExplicitParent("MyRootSpan", null)
+    		.setRecordEvents(true).
+    		setSampler(Samplers.alwaysSample())
+    		.startScopedSpan()) {
       doWork();
     }
+    // Wait for the Exporter to log the spans before exit. Exporter run every 5 second hardcoded.
+    Thread.sleep(6000);
+    Logger.getLogger(MultiSpansScopedTracing.class.getName()).log(Level.INFO, "Done");
   }
 }
